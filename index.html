@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Squeeze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#E7E8EC;
+    --panel:#FFFFFF;
+    --ink:#16181D;
+    --muted:#6B7280;
+    --line:#D3D6DC;
+    --before:#C7CBD3;
+    --after:#2F4BE8;
+    --warn:#8A5A00;
+    --warn-bg:#FFF3D6;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Inter Tight",system-ui,sans-serif;
+    font-size:15px;
+    line-height:1.45;
+    padding:22px 16px 64px;
+  }
+  .wrap{max-width:860px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  h1{
+    font-family:"Bricolage Grotesque",sans-serif;
+    font-weight:800;
+    font-size:clamp(30px,6vw,44px);
+    letter-spacing:-.035em;
+    margin:0;
+  }
+  .sub{color:var(--muted);font-size:14px}
+  .mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+  .stack{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+
+  /* ── mode switch ── */
+  .modes{display:flex;gap:6px;background:#DFE1E6;padding:4px;border-radius:8px;width:fit-content}
+  .modes button{
+    font:inherit;font-weight:600;font-size:13.5px;
+    border:0;background:transparent;color:var(--muted);
+    padding:7px 14px;border-radius:6px;cursor:pointer;
+  }
+  .modes button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .modes button:focus-visible{outline:2px solid var(--after);outline-offset:2px}
+
+  /* ── controls ── */
+  .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+  label{display:block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  input[type=text],input[type=number]{
+    font:inherit;font-family:"IBM Plex Mono",monospace;font-size:13.5px;
+    padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#FBFBFC;color:var(--ink);width:100%;
+  }
+  input:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--after);outline-offset:1px}
+  .grow{flex:1 1 260px}
+  input[type=range]{width:100%;accent-color:var(--after)}
+  .check{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+  .check input{accent-color:var(--after);width:16px;height:16px}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:8px}
+  .swatches{display:flex;gap:6px}
+  .swatches button{width:30px;height:30px;border-radius:6px;border:1px solid var(--line);cursor:pointer}
+  .swatches button[aria-pressed="true"]{outline:2px solid var(--after);outline-offset:1px}
+
+  /* ── dropzone ── */
+  #drop{
+    border:1.5px dashed #B9BEC7;border-radius:var(--r);background:var(--panel);
+    padding:30px 18px;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;
+  }
+  #drop.hot{border-color:var(--after);background:#F2F4FF}
+  #drop strong{font-family:"Bricolage Grotesque",sans-serif;font-weight:600;font-size:18px;letter-spacing:-.02em}
+  #drop p{margin:6px 0 0;color:var(--muted);font-size:13.5px}
+
+  /* ── ledger ── */
+  .total{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+  .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:38px;letter-spacing:-.04em;line-height:1}
+  .bar{position:relative;height:12px;border-radius:3px;background:var(--before);overflow:hidden;margin-top:10px}
+  .bar span{position:absolute;inset:0 auto 0 0;background:var(--after);width:100%;transition:width .5s cubic-bezier(.2,.7,.2,1)}
+  @media (prefers-reduced-motion:reduce){.bar span{transition:none}}
+
+  .item{display:grid;grid-template-columns:52px 1fr auto;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+  .item:first-child{border-top:0}
+  .thumb{width:52px;height:52px;border-radius:6px;object-fit:cover;background:#EEF0F3;border:1px solid var(--line)}
+  .name{font-size:14px;font-weight:500;word-break:break-all;line-height:1.25}
+  .meta{font-size:12px;color:var(--muted);margin-top:3px}
+  .save{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:14px;text-align:right;white-space:nowrap}
+  .save small{display:block;font-weight:400;font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+  .act{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:#FBFBFC;border-radius:7px;padding:7px 12px;cursor:pointer;margin-top:6px}
+  .act:hover{background:#F1F2F5}
+
+  .primary{
+    font:inherit;font-weight:600;font-size:15px;border:0;background:var(--after);color:#fff;
+    border-radius:8px;padding:11px 18px;cursor:pointer;
+  }
+  .primary[disabled]{opacity:.45;cursor:not-allowed}
+  .ghost{font:inherit;font-size:14px;border:1px solid var(--line);background:transparent;border-radius:8px;padding:10px 14px;cursor:pointer}
+
+  .note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:13px}
+  .err{color:#9B1C1C;font-size:13px;margin-top:6px}
+  details{border-top:1px solid var(--line);padding-top:12px;margin-top:14px}
+  summary{cursor:pointer;font-weight:600;font-size:14px}
+  pre{background:#15171C;color:#E6E8EE;padding:14px;border-radius:8px;overflow-x:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.55}
+  code{font-family:"IBM Plex Mono",monospace;font-size:12.5px;background:#EDEEF2;padding:1px 5px;border-radius:4px}
+  .status{font-size:12px;color:var(--muted);margin-top:5px;min-height:16px;font-family:"IBM Plex Mono",monospace}
+  .prog{height:4px;background:#E4E6EB;border-radius:2px;overflow:hidden;margin-top:6px}
+  .prog i{display:block;height:100%;width:0;background:var(--after);transition:width .2s linear}
+  @media (prefers-reduced-motion:reduce){.prog i{transition:none}}
+  #queue{font-size:13px;color:var(--muted);font-family:"IBM Plex Mono",monospace;align-self:center}
+  .primary.stop{background:#9B1C1C}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Squeeze</h1>
+    <span class="sub">Any image in. Smallest sensible JPEG out, same pixel dimensions.</span>
+  </header>
+
+  <div class="stack">
+
+    <div class="panel">
+      <div class="modes" role="group" aria-label="Compression engine">
+        <button id="mWorker" aria-pressed="true">Tinify</button>
+        <button id="mLocal" aria-pressed="false">In this browser</button>
+      </div>
+
+      <div id="localOpts" class="hidden" style="margin-top:16px">
+        <div class="row">
+          <div class="grow">
+            <label for="q">Quality <span class="mono" id="qv">0.72</span></label>
+            <input type="range" id="q" min="0.30" max="0.95" step="0.01" value="0.72" />
+          </div>
+          <div style="flex:0 0 150px">
+            <label for="target">Target size (KB)</label>
+            <input type="number" id="target" min="5" step="5" placeholder="off" />
+          </div>
+        </div>
+        <div class="hint">With a target set, quality is searched downward until the file fits — the slider becomes the ceiling. Encoding happens on your device; nothing is uploaded.</div>
+      </div>
+
+      <div id="workerOpts" style="margin-top:16px">
+        <input type="text" id="wurl" value="/api" class="hidden" />
+        <div class="hint">Compression runs on Tinify's engine. Your key stays in the Worker as a secret and never reaches this page. A JPEG costs 1 credit; a PNG or WebP costs 2, since the conversion counts as a second compression.</div>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <div>
+          <label>Background for transparency</label>
+          <div class="swatches" id="bgSwatch">
+            <button data-bg="#FFFFFF" style="background:#FFFFFF" aria-pressed="true" title="White"></button>
+            <button data-bg="#000000" style="background:#000000" aria-pressed="false" title="Black"></button>
+            <button data-bg="#E7E8EC" style="background:#E7E8EC" aria-pressed="false" title="Light grey"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="drop" tabindex="0" role="button" aria-label="Add images">
+      <strong>Drop images here</strong>
+      <p>or click to pick — PNG, JPEG, WebP, AVIF, HEIC if your browser reads it</p>
+      <input type="file" id="file" accept="image/*" multiple class="hidden" />
+    </div>
+
+    <div class="row">
+      <button class="primary" id="run" disabled>Squeeze</button>
+      <button class="ghost" id="all" disabled>Download all</button>
+      <button class="ghost" id="clear" disabled>Clear</button>
+      <div id="queue"></div>
+    </div>
+
+    <div class="panel hidden" id="summary">
+      <div class="total">
+        <div>
+          <div class="sub">Total saved</div>
+          <div class="big mono" id="savedTotal">—</div>
+        </div>
+        <div class="mono sub" id="totalLine"></div>
+      </div>
+      <div class="bar"><span id="totalBar" style="width:100%"></span></div>
+    </div>
+
+    <div class="panel hidden" id="list"></div>
+
+
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const state = {
+  files: [], mode: 'worker', bg: '#FFFFFF',
+  results: new Map(), status: new Map(), thumbs: new Map(), rows: new Map(),
+  running: false, xhr: null, cancelled: false, tick: null, t0: 0, pos: '',
+};
+
+const kb = b => (b / 1024).toFixed(b < 1024 * 10 ? 1 : 0) + ' KB';
+const pct = (a, b) => Math.round((1 - b / a) * 100);
+const secs = t0 => ((performance.now() - t0) / 1000).toFixed(1) + 's';
+
+/* ── mode ── */
+function setMode(m) {
+  state.mode = m;
+  $('#mLocal').setAttribute('aria-pressed', m === 'local');
+  $('#mWorker').setAttribute('aria-pressed', m === 'worker');
+  $('#localOpts').classList.toggle('hidden', m !== 'local');
+  $('#workerOpts').classList.toggle('hidden', m !== 'worker');
+}
+$('#mLocal').onclick = () => setMode('local');
+$('#mWorker').onclick = () => setMode('worker');
+
+$('#q').oninput = e => $('#qv').textContent = Number(e.target.value).toFixed(2);
+
+$('#bgSwatch').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.bg = b.dataset.bg;
+  [...$('#bgSwatch').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+};
+
+/* ── intake ── */
+const drop = $('#drop'), fileInput = $('#file');
+drop.onclick = () => fileInput.click();
+drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } };
+['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('hot'); }));
+['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('hot'); }));
+drop.addEventListener('drop', e => add(e.dataTransfer.files));
+fileInput.onchange = e => { add(e.target.files); e.target.value = ''; };
+
+function add(fileList) {
+  for (const f of fileList) {
+    if (!f.type.startsWith('image/')) continue;
+    state.files.push(f);
+    state.status.set(f, {
+      label: f.size > 5 * 1024 * 1024 ? 'Waiting — large file, expect a slower upload' : 'Waiting',
+      progress: null,
+    });
+  }
+  render();
+}
+
+$('#clear').onclick = () => {
+  state.thumbs.forEach(u => URL.revokeObjectURL(u));
+  state.files = []; state.results.clear(); state.status.clear(); state.thumbs.clear(); state.rows.clear();
+  render();
+};
+
+/* ── status plumbing ── */
+function setStatus(f, label, progress) {
+  state.status.set(f, { label, progress: progress ?? null });
+  paint(f);
+}
+function paint(f) {
+  const row = state.rows.get(f), s = state.status.get(f);
+  if (!row || !s) return;
+  row.status.textContent = s.label;
+  row.prog.classList.toggle('hidden', s.progress == null);
+  row.bar.style.width = (s.progress ?? 0) + '%';
+}
+function startTicker() {
+  stopTicker();
+  state.tick = setInterval(() => {
+    $('#queue').textContent = state.pos + ' · ' + secs(state.t0);
+  }, 200);
+}
+function stopTicker() { clearInterval(state.tick); state.tick = null; }
+
+/* ── local encoder ── */
+async function encodeLocal(file) {
+  setStatus(file, 'Reading the file…', null);
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const c = document.createElement('canvas');
+  c.width = bmp.width; c.height = bmp.height;
+  setStatus(file, 'Drawing ' + c.width + '×' + c.height + '…', null);
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = state.bg;
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(bmp, 0, 0);
+  bmp.close?.();
+
+  const toBlob = q => new Promise(r => c.toBlob(r, 'image/jpeg', q));
+  const ceiling = Number($('#q').value);
+  const targetKb = Number($('#target').value);
+  const yieldUI = () => new Promise(r => setTimeout(r, 0));
+
+  if (!targetKb) {
+    setStatus(file, 'Encoding at q' + ceiling.toFixed(2) + '…', null);
+    await yieldUI();
+    const blob = await toBlob(ceiling);
+    return { blob, w: c.width, h: c.height, quality: ceiling };
+  }
+
+  const limit = targetKb * 1024;
+  let lo = 0.25, hi = ceiling, best = null, bestQ = lo;
+  for (let i = 0; i < 8; i++) {
+    const mid = (lo + hi) / 2;
+    setStatus(file, 'Pass ' + (i + 1) + ' of 8 — trying q' + mid.toFixed(2) + '…', ((i + 1) / 8) * 100);
+    await yieldUI();
+    const blob = await toBlob(mid);
+    setStatus(file, 'Pass ' + (i + 1) + ' of 8 — q' + mid.toFixed(2) + ' gave ' + kb(blob.size), ((i + 1) / 8) * 100);
+    if (blob.size <= limit) { best = blob; bestQ = mid; lo = mid; } else { hi = mid; }
+  }
+  if (!best) {
+    setStatus(file, "Target is tight — falling back to q0.25", 100);
+    best = await toBlob(0.25); bestQ = 0.25;
+  }
+  return { blob: best, w: c.width, h: c.height, quality: bestQ };
+}
+
+/* ── worker path ── */
+function encodeWorker(file) {
+  return new Promise((resolve, reject) => {
+    const base = ($('#wurl').value.trim() || '/api').replace(/\/$/, '');
+    if (!base) return reject(new Error('Add your Worker endpoint first.'));
+
+    const xhr = new XMLHttpRequest();
+    state.xhr = xhr;
+    xhr.open('POST', base + '?bg=' + encodeURIComponent(state.bg));
+    xhr.responseType = 'blob';
+    xhr.timeout = 180000;
+
+    setStatus(file, 'Opening connection…', 0);
+
+    xhr.upload.onprogress = e => {
+      if (!e.lengthComputable) return setStatus(file, 'Uploading ' + kb(file.size) + '…', null);
+      const p = Math.round((e.loaded / e.total) * 100);
+      setStatus(file, 'Uploading — ' + kb(e.loaded) + ' of ' + kb(e.total) + ' (' + p + '%)', p);
+    };
+    xhr.upload.onload = () => setStatus(file, 'Uploaded. Tinify is compressing…', 100);
+    xhr.onprogress = () => setStatus(file, 'Fetching the smaller file…', 100);
+
+    xhr.ontimeout = () => reject(new Error('No answer after 3 minutes. Try again on Wi-Fi, or switch to "In this browser" mode.'));
+    xhr.onerror = () => reject(new Error('Could not reach the Worker. Check the endpoint and your connection.'));
+    xhr.onabort = () => reject(new Error('Stopped.'));
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        xhr.response.text()
+          .then(t => reject(new Error(xhr.status + ' from the Worker — ' + t.slice(0, 160))))
+          .catch(() => reject(new Error('Worker returned ' + xhr.status)));
+        return;
+      }
+      resolve({
+        blob: xhr.response,
+        w: Number(xhr.getResponseHeader('Image-Width')) || null,
+        h: Number(xhr.getResponseHeader('Image-Height')) || null,
+        count: xhr.getResponseHeader('Compression-Count'),
+      });
+    };
+
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.send(file);
+  });
+}
+
+/* ── run ── */
+function runLabel() {
+  $('#run').textContent = state.running ? 'Stop' : 'Squeeze';
+  $('#run').classList.toggle('stop', state.running);
+}
+
+$('#run').onclick = async () => {
+  if (state.running) { state.cancelled = true; state.xhr?.abort(); return; }
+
+  const queue = state.files.filter(f => !state.results.get(f)?.blob);
+  if (!queue.length) return;
+
+  state.running = true; state.cancelled = false;
+  runLabel();
+
+  for (let i = 0; i < queue.length; i++) {
+    const f = queue[i];
+    if (state.cancelled) { setStatus(f, 'Stopped before starting', null); break; }
+    state.pos = 'File ' + (i + 1) + ' of ' + queue.length;
+    state.t0 = performance.now();
+    startTicker();
+    try {
+      const r = state.mode === 'local' ? await encodeLocal(f) : await encodeWorker(f);
+      state.results.set(f, r);
+      const t = secs(state.t0);
+      render();
+      setStatus(f, 'Done in ' + t, 100);
+    } catch (err) {
+      state.results.set(f, { error: err.message });
+      render();
+      setStatus(f, err.message === 'Stopped.' ? 'Stopped' : 'Failed', null);
+    }
+  }
+
+  stopTicker();
+  state.running = false; state.xhr = null; state.pos = '';
+  $('#queue').textContent = '';
+  runLabel();
+  render();
+};
+
+function thumbURL(f) {
+  const key = state.results.get(f)?.blob || f;
+  if (!state.thumbs.has(key)) state.thumbs.set(key, URL.createObjectURL(key));
+  return state.thumbs.get(key);
+}
+
+function download(file) {
+  const r = state.results.get(file);
+  if (!r?.blob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(r.blob);
+  a.download = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+$('#all').onclick = async () => {
+  for (const f of state.files) { download(f); await new Promise(r => setTimeout(r, 350)); }
+};
+
+/* ── view ── */
+function render() {
+  const has = state.files.length > 0;
+  $('#run').disabled = !has;
+  $('#clear').disabled = !has || state.running;
+  $('#list').classList.toggle('hidden', !has);
+
+  const done = state.files.filter(f => state.results.get(f)?.blob);
+  $('#all').disabled = done.length === 0;
+  $('#summary').classList.toggle('hidden', done.length === 0);
+
+  if (done.length) {
+    const before = done.reduce((s, f) => s + f.size, 0);
+    const after = done.reduce((s, f) => s + state.results.get(f).blob.size, 0);
+    $('#savedTotal').textContent = kb(before - after) + '  ·  ' + pct(before, after) + '%';
+    $('#totalLine').textContent = kb(before) + '  →  ' + kb(after) + '   (' + done.length + ' file' + (done.length > 1 ? 's' : '') + ')';
+    $('#totalBar').style.width = Math.max(2, (after / before) * 100) + '%';
+  }
+
+  $('#list').innerHTML = '';
+  state.rows.clear();
+
+  state.files.forEach(f => {
+    const r = state.results.get(f);
+    const row = document.createElement('div');
+    row.className = 'item';
+
+    const img = document.createElement('img');
+    img.className = 'thumb';
+    img.alt = '';
+    img.src = thumbURL(f);
+    row.appendChild(img);
+
+    const mid = document.createElement('div');
+    const dims = r?.w ? r.w + '×' + r.h + ' px' : '';
+    mid.innerHTML =
+      '<div class="name"></div>' +
+      '<div class="meta mono">' + kb(f.size) + (dims ? ' · ' + dims : '') +
+      (r?.quality ? ' · q' + r.quality.toFixed(2) : '') +
+      (r?.count ? ' · credit ' + r.count : '') + '</div>';
+    mid.querySelector('.name').textContent = f.name;
+
+    if (r?.blob) {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.marginTop = '8px';
+      bar.innerHTML = '<span style="width:' + Math.max(2, (r.blob.size / f.size) * 100) + '%"></span>';
+      mid.appendChild(bar);
+    }
+
+    const status = document.createElement('div');
+    status.className = 'status';
+    mid.appendChild(status);
+
+    const prog = document.createElement('div');
+    prog.className = 'prog hidden';
+    prog.innerHTML = '<i></i>';
+    mid.appendChild(prog);
+
+    if (r?.error) {
+      const e = document.createElement('div');
+      e.className = 'err';
+      e.textContent = r.error;
+      mid.appendChild(e);
+    }
+    row.appendChild(mid);
+
+    const right = document.createElement('div');
+    if (r?.blob) {
+      right.innerHTML = '<div class="save">' + kb(r.blob.size) + '<small>−' + pct(f.size, r.blob.size) + '%</small></div>';
+      const b = document.createElement('button');
+      b.className = 'act';
+      b.textContent = 'Download';
+      b.onclick = () => download(f);
+      right.appendChild(b);
+    }
+    row.appendChild(right);
+
+    $('#list').appendChild(row);
+    state.rows.set(f, { status, prog, bar: prog.querySelector('i') });
+    paint(f);
+  });
+}
+</script>
+</body>
+</html>
