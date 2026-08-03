@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "squeeze",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-03",
+  "assets": {
+    "directory": "./public"
+  },
+  "observability": {
+    "enabled": true
+  }
+  // TINIFY_KEY is a secret — set it in the dashboard
+  // (Worker → Settings → Variables and Secrets), never in this file.
+}
